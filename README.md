@@ -10,7 +10,7 @@ type User struct {
 
 type Friend struct {
 	FirstName string `json:"firstname"`
-	LastName  string `json:"firstname"`
+	LastName  string `json:"lastname"`
 }
 ```
 
@@ -24,6 +24,7 @@ export interface User {
 
 export interface Friend {
 	firstname: string,
+	lastname: string,
 }
 ```
 

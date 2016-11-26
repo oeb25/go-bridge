@@ -13,7 +13,7 @@ type User struct {
 
 type Friend struct {
 	FirstName string `json:"firstname"`
-	LastName  string `json:"firstname"`
+	LastName  string `json:"lastname"`
 }
 
 func main() {
