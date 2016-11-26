@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"reflect"
 
-	"gitlab.com/oeb25/go-bridge/bridge"
+	"github.com/oeb25/go-bridge/bridge"
 )
 
 type Rust struct{}

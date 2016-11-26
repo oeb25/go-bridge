@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"gitlab.com/oeb25/go-bridge/bridge"
+	"github.com/oeb25/go-bridge/bridge"
 )
 
 type TypeScript struct {
