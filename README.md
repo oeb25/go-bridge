@@ -2,7 +2,7 @@
 
 Compile your Go structs to other languages!
 
-```golang
+```go
 type User struct {
 	ID      int      `json:"id"`
 	Friends []Friend `json:"friends"`
@@ -30,7 +30,7 @@ export interface Friend {
 ## Usage
 
 First get go-bridge
-```
+```bash
 go get github.com/oeb25/go-bridge
 ```
 
