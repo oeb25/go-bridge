@@ -1,4 +1,4 @@
-# go-brige
+# go-bridge
 
 Compile your Go structs to other languages!
 
