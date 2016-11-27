@@ -4,6 +4,10 @@ import (
 	"io/ioutil"
 	"reflect"
 
+	"regexp"
+
+	"strings"
+
 	"github.com/oeb25/go-bridge/bridge"
 )
 
@@ -18,12 +22,19 @@ func (t Rust) FormatTo(in interface{}, path string) error {
 	return ioutil.WriteFile(path, []byte(types), 0700)
 }
 
-func (t Rust) Header() string {
-	return "use std::collections::HashMap\n"
-}
-
 func (t Rust) Name(input string, tags reflect.StructTag) string {
-	return input
+	r, _ := regexp.Compile("([A-Z]+[a-z0-9]+)")
+	out := r.FindAllString(input, -1)
+
+	if len(out) == 0 {
+		return strings.ToLower(input)
+	}
+
+	for i := range out {
+		out[i] = strings.ToLower(out[i])
+	}
+
+	return strings.Join(out, "_")
 }
 
 func (t Rust) Map(from, to string) string {
@@ -35,13 +46,14 @@ func (t Rust) Array(of string) string {
 }
 
 func (t Rust) Struct(name string, fields []bridge.Field) (out string) {
-	out = "struct " + name + " {\n"
+	out = "#[derive(Debug, Default)]\n"
+	out = out + "struct " + name + " {\n"
 	for n := range fields {
 		f := fields[n]
 		out = out + "\t" + f.Name + ": " + f.Type + ",\n"
 	}
 
-	out = out + "}\n"
+	out = out + "}"
 
 	return
 }

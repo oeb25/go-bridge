@@ -48,4 +48,6 @@ func main() {
 ## Officially supported targets
 
 - TypeScript / Flow
+- Elm _(partial)_ 
 - Rust _(partial)_ 
+- C _(__very__ much in progress)_ 

@@ -69,8 +69,8 @@ func Format(writer Target, in interface{}) string {
 
 		sort.Strings(sorted)
 
-		for i := range sorted {
-			field := sorted[i]
+		for name := range sorted {
+			field := sorted[name]
 
 			fields = append(fields, Field{
 				Name: field,
@@ -184,10 +184,4 @@ func formatType(o Target, v reflect.Type) (out string, deps map[string]map[strin
 	}
 
 	return
-}
-
-func dodo(o Target, a interface{}) (name string, structs map[string]map[string]string) {
-	v := reflect.Indirect(reflect.ValueOf(a))
-
-	return formatType(o, v.Type())
 }

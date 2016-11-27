@@ -17,8 +17,8 @@ type Friend struct {
 }
 
 func main() {
-	err := targets.TypeScript{}.
-		FormatTo(User{}, "./types.ts")
+	err := targets.C{}.
+		FormatTo(User{}, "./types.c")
 	if err != nil {
 		log.Fatal(err)
 	}
