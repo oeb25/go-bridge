@@ -50,4 +50,4 @@ func main() {
 - TypeScript / Flow
 - Elm _(partial)_ 
 - Rust _(partial)_ 
-- C _(__very__ much in progress)_ 
+- C _(**very** much in progress)_ 
