@@ -56,7 +56,7 @@ func Format(writer Target, in interface{}) (string, error) {
 		sum = th.Header() + "\n\n"
 	}
 
-	_, structs, err := formatType(writer, reflect.Indirect(reflect.ValueOf(in)).Type())
+	_, structs, err := formatType(writer, reflect.TypeOf(in))
 	if err != nil {
 		return "", err
 	}
