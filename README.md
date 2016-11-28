@@ -1,6 +1,8 @@
 # go-bridge
 
-Compile your Go structs to other languages!
+[![GoDoc](https://godoc.org/github.com/oeb25/go-bridge?status.svg)](https://godoc.org/github.com/oeb25/go-bridge)
+
+Convert your Go structs to other languages, including TypeScript / Flow, Elm and Rust among others! 
 
 ```go
 type User struct {
@@ -50,4 +52,4 @@ func main() {
 - TypeScript / Flow
 - Elm _(partial)_ 
 - Rust _(partial)_ 
-- C _(**very** much in progress)_ 
+- C _(**very** much work in progress)_ 
