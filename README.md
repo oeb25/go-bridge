@@ -1,6 +1,7 @@
 # go-bridge
 
 [![GoDoc](https://godoc.org/github.com/oeb25/go-bridge?status.svg)](https://godoc.org/github.com/oeb25/go-bridge)
+[![Build Status](https://travis-ci.org/oeb25/go-bridge.svg?branch=master)](https://travis-ci.org/oeb25/go-bridge)
 
 Convert your Go structs to other languages, including TypeScript / Flow, Elm and Rust among others! 
 
