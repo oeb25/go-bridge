@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/oeb25/go-bridge/bridge"
+	"github.com/oeb25/go-bridge"
 )
 
 type TypeScript struct {
@@ -28,12 +28,15 @@ func (t TypeScript) Header() string {
 	return strings.Join(header, "\n\n")
 }
 
-func (t TypeScript) Format(in interface{}) string {
+func (t TypeScript) Format(in interface{}) (string, error) {
 	return bridge.Format(t, in)
 }
 
 func (t TypeScript) FormatTo(in interface{}, path string) error {
-	types := t.Format(in)
+	types, err := t.Format(in)
+	if err != nil {
+		return err
+	}
 	return ioutil.WriteFile(path, []byte(types), 0700)
 }
 

@@ -12,7 +12,7 @@ import (
 
 	"fmt"
 
-	"github.com/oeb25/go-bridge/bridge"
+	"github.com/oeb25/go-bridge"
 )
 
 type C struct {
@@ -21,12 +21,15 @@ type C struct {
 	HashMapType string
 }
 
-func (t C) Format(in interface{}) string {
+func (t C) Format(in interface{}) (string, error) {
 	return bridge.Format(t, in)
 }
 
 func (t C) FormatTo(in interface{}, path string) error {
-	types := t.Format(in)
+	types, err := t.Format(in)
+	if err != nil {
+		return err
+	}
 	return ioutil.WriteFile(path, []byte(types), 0700)
 }
 

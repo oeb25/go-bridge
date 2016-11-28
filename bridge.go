@@ -1,7 +1,7 @@
 package bridge
 
 import (
-	"log"
+	"errors"
 	"reflect"
 	"regexp"
 	"sort"
@@ -47,14 +47,19 @@ type Target interface {
 	Bool() string
 }
 
-func Format(writer Target, in interface{}) string {
+// Format takes a target and a struct, and returs the definition produced by
+// the target.
+func Format(writer Target, in interface{}) (string, error) {
 	sum := ""
 
 	if th, exists := writer.(TargetHeader); exists {
 		sum = th.Header() + "\n\n"
 	}
 
-	_, structs := formatType(writer, reflect.Indirect(reflect.ValueOf(in)).Type())
+	_, structs, err := formatType(writer, reflect.Indirect(reflect.ValueOf(in)).Type())
+	if err != nil {
+		return "", err
+	}
 
 	var formattedStructs []string
 
@@ -90,13 +95,13 @@ func Format(writer Target, in interface{}) string {
 		sum = sum + tf.Footer()
 	}
 
-	return sum + "\n"
+	return sum + "\n", nil
 }
 
-func formatType(o Target, v reflect.Type) (out string, deps map[string]map[string]string) {
+func formatType(o Target, v reflect.Type) (out string, deps map[string]map[string]string, err error) {
 	publicRegex, err := regexp.Compile("^[A-Z]")
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 
 	deps = make(map[string]map[string]string)
@@ -123,7 +128,11 @@ func formatType(o Target, v reflect.Type) (out string, deps map[string]map[strin
 				name = n.Name(name, f.Tag)
 			}
 
-			field, dee := formatType(o, f.Type)
+			field, dee, er := formatType(o, f.Type)
+			if er != nil {
+				err = er
+				return
+			}
 			fields[name] = field
 
 			for i := range dee {
@@ -136,11 +145,19 @@ func formatType(o Target, v reflect.Type) (out string, deps map[string]map[strin
 		out = v.Name()
 
 	case reflect.Map:
-		from, d1 := formatType(o, v.Key())
+		from, d1, er := formatType(o, v.Key())
+		if er != nil {
+			err = er
+			return
+		}
 		for i := range d1 {
 			deps[i] = d1[i]
 		}
-		to, d2 := formatType(o, v.Elem())
+		to, d2, er := formatType(o, v.Elem())
+		if er != nil {
+			err = er
+			return
+		}
 		for i := range d2 {
 			deps[i] = d2[i]
 		}
@@ -148,7 +165,10 @@ func formatType(o Target, v reflect.Type) (out string, deps map[string]map[strin
 		out = o.Map(from, to)
 
 	case reflect.Slice:
-		out, deps = formatType(o, v.Elem())
+		out, deps, err = formatType(o, v.Elem())
+		if err != nil {
+			return
+		}
 		out = o.Array(out)
 
 	case reflect.Ptr:
@@ -156,10 +176,13 @@ func formatType(o Target, v reflect.Type) (out string, deps map[string]map[strin
 
 		if !exists {
 			// TODO: Add name of target
-			log.Fatal("Target does not support pointers, add 'func Ptr(to string) string'")
+			err = errors.New("Target does not support pointers, add 'func Ptr(to string) string'")
 			return
 		}
-		out, deps = formatType(o, v.Elem())
+		out, deps, err = formatType(o, v.Elem())
+		if err != nil {
+			return
+		}
 		out = n.Ptr(out)
 
 	case reflect.Bool:
@@ -179,8 +202,8 @@ func formatType(o Target, v reflect.Type) (out string, deps map[string]map[strin
 	case reflect.Float64:
 		out = o.Float64()
 	default:
-		log.Fatal("UNHANDELD TYPE:", v.Kind())
-		out = v.Name()
+		err = errors.New("UNHANDELD TYPE: " + v.Kind().String())
+		return
 	}
 
 	return

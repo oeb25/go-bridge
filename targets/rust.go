@@ -8,17 +8,20 @@ import (
 
 	"strings"
 
-	"github.com/oeb25/go-bridge/bridge"
+	"github.com/oeb25/go-bridge"
 )
 
 type Rust struct{}
 
-func (t Rust) Format(in interface{}) string {
+func (t Rust) Format(in interface{}) (string, error) {
 	return bridge.Format(t, in)
 }
 
 func (t Rust) FormatTo(in interface{}, path string) error {
-	types := t.Format(in)
+	types, err := t.Format(in)
+	if err != nil {
+		return err
+	}
 	return ioutil.WriteFile(path, []byte(types), 0700)
 }
 
@@ -50,7 +53,7 @@ func (t Rust) Struct(name string, fields []bridge.Field) (out string) {
 	out = out + "struct " + name + " {\n"
 	for n := range fields {
 		f := fields[n]
-		out = out + "\t" + f.Name + ": " + f.Type + ",\n"
+		out = out + "    " + f.Name + ": " + f.Type + ",\n"
 	}
 
 	out = out + "}"
