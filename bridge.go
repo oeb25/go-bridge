@@ -1,3 +1,4 @@
+// Convert your Go structs to other languages, including TypeScript / Flow, Elm and Rust among others!
 package bridge
 
 import (
