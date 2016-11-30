@@ -1,9 +1,9 @@
 package main
 
 import (
-	"log"
-
 	"fmt"
+
+	"log"
 
 	"github.com/oeb25/go-bridge/targets"
 )
@@ -19,9 +19,9 @@ type Friend struct {
 }
 
 func main() {
-	output, err := targets.TypeScript{}.Format(User{})
+	g, err := targets.TypeScript{}.Format(User{})
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(output)
+	fmt.Println(g)
 }

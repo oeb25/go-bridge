@@ -1,12 +1,10 @@
-// Convert your Go structs to other languages, including TypeScript / Flow, Elm and Rust among others!
+// Package bridge converts your Go structs to other languages, including
+// TypeScript / Flow, Elm and Rust among others!
 package bridge
 
 import (
 	"errors"
 	"reflect"
-	"regexp"
-	"sort"
-	"strings"
 )
 
 type Field struct {
@@ -14,197 +12,276 @@ type Field struct {
 	Type string
 }
 
-type TargetHeader interface {
-	Header() string
+type Method struct {
+	Name string
+	Args []string
+	Outs []string
 }
 
-type TargetFooter interface {
-	Footer() string
+type definition struct {
+	Type   reflect.Type
+	Deps   map[reflect.Type]string
+	Name   string
+	Parsed string
 }
 
-type TargetNamer interface {
-	Name(input string, tag reflect.StructTag) string
+type Bridge struct {
+	Target      Target
+	definitions []definition
+	flag        map[reflect.Type]bool
 }
 
-type TargetPtr interface {
-	Ptr(to string) string
-}
-
-type Target interface {
-	Struct(name string, fields []Field) string
-	Map(from string, to string) string
-	Array(of string) string
-
-	Int() string
-	Int8() string
-	Int16() string
-	Int32() string
-	Int64() string
-
-	Float32() string
-	Float64() string
-
-	String() string
-	Bool() string
-}
-
-// Format takes a target and a struct, and returs the definition produced by
-// the target.
-func Format(writer Target, in interface{}) (string, error) {
-	sum := ""
-
-	if th, exists := writer.(TargetHeader); exists {
-		sum = th.Header() + "\n\n"
+func NewBridge(target Target) Bridge {
+	return Bridge{
+		Target: target,
+		flag:   make(map[reflect.Type]bool),
 	}
-
-	_, structs, err := formatType(writer, reflect.TypeOf(in))
-	if err != nil {
-		return "", err
-	}
-
-	var formattedStructs []string
-
-	for i := range structs {
-		s := structs[i]
-		var sorted []string
-		var fields []Field
-
-		for field := range s {
-			sorted = append(sorted, field)
-		}
-
-		sort.Strings(sorted)
-
-		for name := range sorted {
-			field := sorted[name]
-
-			fields = append(fields, Field{
-				Name: field,
-				Type: s[field],
-			})
-		}
-
-		this := writer.Struct(i, fields)
-
-		formattedStructs = append(formattedStructs, this)
-	}
-
-	sort.Strings(formattedStructs)
-	sum = sum + strings.Join(formattedStructs, "\n\n")
-
-	if tf, exists := writer.(TargetFooter); exists {
-		sum = sum + tf.Footer()
-	}
-
-	return sum + "\n", nil
 }
 
-func formatType(o Target, v reflect.Type) (out string, deps map[string]map[string]string, err error) {
-	publicRegex, err := regexp.Compile("^[A-Z]")
-	if err != nil {
-		return
-	}
-
-	deps = make(map[string]map[string]string)
-
-	switch v.Kind() {
+func (g *Bridge) getDependencies(t reflect.Type) (deps []reflect.Type) {
+	switch t.Kind() {
 	case reflect.Struct:
-		fields := make(map[string]string)
+		for i := 0; i < t.NumField(); i++ {
+			deps = append(deps, t.Field(i).Type)
+		}
+	}
 
-		for i := 0; i < v.NumField(); i++ {
-			f := v.Field(i)
+	return
+}
 
-			if f.Anonymous {
-				continue
+func (g *Bridge) addDefinition(t reflect.Type) *definition {
+	for i := range g.definitions {
+		def := g.definitions[i]
+		if def.Type == t {
+			return &def
+		}
+	}
+
+	def := definition{
+		Type: t,
+		Deps: make(map[reflect.Type]string),
+	}
+
+	g.definitions = append(g.definitions, def)
+
+	return &def
+}
+
+func (g *Bridge) findType(t reflect.Type) *definition {
+	for i := range g.definitions {
+		def := g.definitions[i]
+		if def.Type == t {
+			return &def
+		}
+	}
+
+	return nil
+}
+
+func (g *Bridge) parse(d *definition) (err error) {
+	targetName := reflect.TypeOf(g.Target).Name()
+
+	t := d.Type
+	switch t.Kind() {
+	case reflect.Struct:
+		fields := make([]Field, t.NumField())
+		for i := 0; i < t.NumField(); i++ {
+			dd := g.findType(t.Field(i).Type)
+			name := t.Field(i).Name
+			if o, exists := g.Target.(Namer); exists {
+				name = o.Name(name, t.Field(i).Tag)
 			}
-
-			name := f.Name
-
-			// Check if name is exported
-			if !publicRegex.Match([]byte(name)) {
-				continue
-			}
-
-			if n, exists := o.(TargetNamer); exists {
-				name = n.Name(name, f.Tag)
-			}
-
-			field, dee, er := formatType(o, f.Type)
-			if er != nil {
-				err = er
-				return
-			}
-			fields[name] = field
-
-			for i := range dee {
-				deps[i] = dee[i]
+			fields[i] = Field{
+				Name: name,
+				Type: dd.Name,
 			}
 		}
-
-		deps[v.Name()] = fields
-
-		out = v.Name()
+		d.Name = t.Name()
+		d.Parsed = g.Target.Struct(t.Name(), fields)
 
 	case reflect.Map:
-		from, d1, er := formatType(o, v.Key())
-		if er != nil {
-			err = er
-			return
-		}
-		for i := range d1 {
-			deps[i] = d1[i]
-		}
-		to, d2, er := formatType(o, v.Elem())
-		if er != nil {
-			err = er
-			return
-		}
-		for i := range d2 {
-			deps[i] = d2[i]
+		dKey := g.findType(t.Key())
+		key := dKey.Name
+		switch dKey.Type.Kind() {
+		case reflect.Interface, reflect.Struct:
+			key = dKey.Type.Name()
 		}
 
-		out = o.Map(from, to)
+		dElem := g.findType(t.Elem())
+		elem := dElem.Name
+		switch dElem.Type.Kind() {
+		case reflect.Interface, reflect.Struct:
+			elem = dElem.Type.Name()
+		}
+
+		d.Name = g.Target.Map(key, elem)
 
 	case reflect.Slice:
-		out, deps, err = formatType(o, v.Elem())
-		if err != nil {
-			return
+		dd := g.findType(t.Elem())
+		name := dd.Name
+		switch dd.Type.Kind() {
+		case reflect.Interface, reflect.Struct:
+			name = dd.Type.Name()
 		}
-		out = o.Array(out)
+		d.Name = g.Target.Array(name)
 
 	case reflect.Ptr:
-		n, exists := o.(TargetPtr)
+		var o Ptr
+		var exists bool
+		if o, exists = g.Target.(Ptr); !exists {
+			err = errors.New("Target " + targetName + " does not have function Ptr")
+			return
+		}
+		d.Name = o.Ptr(g.findType(t.Elem()).Name)
 
-		if !exists {
-			// TODO: Add name of target
-			err = errors.New("Target does not support pointers, add 'func Ptr(to string) string'")
+	case reflect.Interface:
+		d.Name = t.Name()
+		if t.NumMethod() == 0 && d.Name == "" {
+			if o, e := g.Target.(Any); e {
+				d.Name = o.Any()
+				return
+			}
+			err = errors.New("Target " + reflect.TypeOf(g.Target).Name() +
+				" does not support any, needed by an empty unnamed interface. " +
+				"To fix this add func Any to the target")
 			return
 		}
-		out, deps, err = formatType(o, v.Elem())
-		if err != nil {
+
+		methods := make([]string, t.NumMethod())
+		for i := 0; i < t.NumMethod(); i++ {
+			method := t.Method(i)
+			dd := g.findType(method.Type)
+			methods[i] = method.Name + dd.Name
+		}
+		var o Interface
+		var exists bool
+		if o, exists = g.Target.(Interface); !exists {
+			err = errors.New("Target " + reflect.TypeOf(g.Target).Name() + " does not support interfaces")
 			return
 		}
-		out = n.Ptr(out)
+
+		d.Parsed = o.Interface(d.Name, methods)
+
+	case reflect.Func:
+		args := make([]string, t.NumIn())
+		outs := make([]string, t.NumOut())
+
+		for i := 0; i < t.NumIn(); i++ {
+			k := g.findType(t.In(i))
+			if k.Type.Kind() == reflect.Interface {
+				args[i] = k.Type.Name()
+			} else {
+				args[i] = k.Name
+			}
+		}
+		if t.NumOut() > 1 {
+			err = errors.New("Target " + reflect.TypeOf(g.Target).Name() + " multiple return arguments")
+			return
+
+		}
+		for i := 0; i < t.NumOut(); i++ {
+			k := g.findType(t.Out(i))
+			if k.Type.Kind() == reflect.Interface {
+				outs[i] = k.Type.Name()
+			} else {
+				outs[i] = k.Name
+			}
+		}
+
+		var o Func
+		var exists bool
+		if o, exists = g.Target.(Func); !exists {
+			err = errors.New("Target " + reflect.TypeOf(g.Target).Name() + " does not have function Func")
+			return
+		}
+
+		d.Name = o.Func(t.Name(), args, outs[0])
 
 	case reflect.Bool:
-		out = o.Bool()
+		d.Name = g.Target.Bool()
 	case reflect.String:
-		out = o.String()
+		d.Name = g.Target.String()
 	case reflect.Int:
-		out = o.Int()
+		d.Name = g.Target.Int()
 	case reflect.Int16:
-		out = o.Int16()
+		d.Name = g.Target.Int16()
 	case reflect.Int32:
-		out = o.Int32()
+		d.Name = g.Target.Int32()
 	case reflect.Int64:
-		out = o.Int64()
+		d.Name = g.Target.Int64()
 	case reflect.Float32:
-		out = o.Float32()
+		d.Name = g.Target.Float32()
 	case reflect.Float64:
-		out = o.Float64()
+		d.Name = g.Target.Float64()
 	default:
-		err = errors.New("UNHANDELD TYPE: " + v.Kind().String())
+		err = errors.New("UNHANDELD TYPE: " + t.Kind().String())
 		return
+	}
+
+	return
+}
+
+func (g *Bridge) resolve(t reflect.Type) {
+	if _, exists := g.flag[t]; exists {
+		return
+	}
+	g.flag[t] = true
+	defer g.addDefinition(t)
+
+	switch t.Kind() {
+	case reflect.Struct:
+		for i := 0; i < t.NumField(); i++ {
+			g.resolve(t.Field(i).Type)
+		}
+	case reflect.Interface:
+		for i := 0; i < t.NumMethod(); i++ {
+			g.resolve(t.Method(i).Type)
+		}
+	case reflect.Map:
+		g.resolve(t.Key())
+		g.resolve(t.Elem())
+	case reflect.Ptr:
+		g.resolve(t.Elem())
+	case reflect.Slice:
+		g.resolve(t.Elem())
+	case reflect.Func:
+		for i := 0; i < t.NumIn(); i++ {
+			g.resolve(t.In(i))
+		}
+		for i := 0; i < t.NumOut(); i++ {
+			g.resolve(t.Out(i))
+		}
+	}
+}
+
+func (g *Bridge) Format(ts ...interface{}) error {
+	return g.FormatMany(ts)
+}
+
+func (g *Bridge) FormatMany(ts []interface{}) error {
+	for i := range ts {
+		g.resolve(reflect.TypeOf(ts[i]))
+	}
+	for i := range g.definitions {
+		if err := g.parse(&g.definitions[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (g *Bridge) Concat() (out string) {
+	if o, e := g.Target.(Header); e {
+		out += o.Header() + "\n"
+	}
+	for i := range g.definitions {
+		if g.definitions[i].Parsed != "" {
+			out += g.definitions[i].Parsed + "\n"
+		}
+	}
+	if o, e := g.Target.(Footer); e {
+		out += o.Footer() + "\n"
 	}
 
 	return

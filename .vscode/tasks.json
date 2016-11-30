@@ -1,0 +1,28 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "0.1.0",
+    "command": "go",
+    "args": [
+        "test",
+        "./..."
+    ],
+    "isShellCommand": true,
+    "isWatching": true,
+    "showOutput": "always",
+    "problemMatcher": {
+        "owner": "go",
+        // The file name for reported problems is relative to the current working directory.
+        "fileLocation": [
+            "relative",
+            "${cwd}"
+        ],
+        // The actual pattern to match problems in the output.
+        "pattern": {
+            "regexp": "^(.+)\\:(\\d+)\\:(.+)$",
+            "file": 1,
+            "location": 2,
+            "message": 3
+        }
+    }
+}

@@ -1,7 +1,6 @@
 package targets
 
 import (
-	"io/ioutil"
 	"reflect"
 	"strings"
 
@@ -10,10 +9,16 @@ import (
 
 type Elm struct{}
 
-func (t Elm) Format(in interface{}) (string, error) {
-	return bridge.Format(t, in)
+func (t Elm) Format(in ...interface{}) (string, error) {
+	g := bridge.NewBridge(Elm{})
+	err := g.FormatMany(in)
+	if err != nil {
+		return "", err
+	}
+	return g.Concat(), nil
 }
 
+/*
 func (t Elm) FormatTo(in interface{}, path string) error {
 	types, err := t.Format(in)
 	if err != nil {
@@ -21,6 +26,7 @@ func (t Elm) FormatTo(in interface{}, path string) error {
 	}
 	return ioutil.WriteFile(path, []byte(types), 0700)
 }
+*/
 
 func (t Elm) Header() string {
 	return "import Dict exposing ( Dict )"

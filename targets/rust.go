@@ -1,7 +1,6 @@
 package targets
 
 import (
-	"io/ioutil"
 	"reflect"
 
 	"regexp"
@@ -13,10 +12,16 @@ import (
 
 type Rust struct{}
 
-func (t Rust) Format(in interface{}) (string, error) {
-	return bridge.Format(t, in)
+func (t Rust) Format(in ...interface{}) (string, error) {
+	g := bridge.NewBridge(Rust{})
+	err := g.FormatMany(in)
+	if err != nil {
+		return "", err
+	}
+	return g.Concat(), nil
 }
 
+/*
 func (t Rust) FormatTo(in interface{}, path string) error {
 	types, err := t.Format(in)
 	if err != nil {
@@ -24,6 +29,7 @@ func (t Rust) FormatTo(in interface{}, path string) error {
 	}
 	return ioutil.WriteFile(path, []byte(types), 0700)
 }
+*/
 
 func (t Rust) Name(input string, tags reflect.StructTag) string {
 	r, _ := regexp.Compile("([A-Z]+[a-z0-9]+)")

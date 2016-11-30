@@ -19,8 +19,8 @@ func TestSimple(t *testing.T) {
 	expected := `
 #[derive(Debug, Default)]
 struct Simple {
-    age: i32,
     name: String,
+    age: i32,
 }
 `
 
@@ -38,15 +38,14 @@ func TestNested(t *testing.T) {
 
 	expected := `
 #[derive(Debug, Default)]
-struct Nested {
-    nest: Simple,
-    something: f32,
-}
-
-#[derive(Debug, Default)]
 struct Simple {
-    age: i32,
     name: String,
+    age: i32,
+}
+#[derive(Debug, Default)]
+struct Nested {
+    something: f32,
+    nest: Simple,
 }
 `
 
@@ -62,4 +61,8 @@ func TestMap(t *testing.T) {
 		"std::collections::HashMap<a, b>",
 		targets.Rust{}.Map("a", "b"),
 	)
+}
+
+func TestSlice(t *testing.T) {
+	assert.Equal(t, true, true)
 }

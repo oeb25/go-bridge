@@ -1,7 +1,6 @@
 package targets
 
 import (
-	"io/ioutil"
 	"reflect"
 	"strings"
 
@@ -28,10 +27,16 @@ func (t TypeScript) Header() string {
 	return strings.Join(header, "\n\n")
 }
 
-func (t TypeScript) Format(in interface{}) (string, error) {
-	return bridge.Format(t, in)
+func (t TypeScript) Format(in ...interface{}) (string, error) {
+	g := bridge.NewBridge(TypeScript{})
+	err := g.FormatMany(in)
+	if err != nil {
+		return "", err
+	}
+	return g.Concat(), nil
 }
 
+/*
 func (t TypeScript) FormatTo(in interface{}, path string) error {
 	types, err := t.Format(in)
 	if err != nil {
@@ -39,6 +44,7 @@ func (t TypeScript) FormatTo(in interface{}, path string) error {
 	}
 	return ioutil.WriteFile(path, []byte(types), 0700)
 }
+*/
 
 func (t TypeScript) Name(input string, tags reflect.StructTag) string {
 	j := tags.Get("json")
@@ -66,7 +72,7 @@ func (t TypeScript) Array(of string) string {
 }
 
 func (t TypeScript) Struct(name string, fields []bridge.Field) (out string) {
-	out = "export interface " + name + " {\n"
+	out = "export type " + name + " = {\n"
 	for n := range fields {
 		f := fields[n]
 		out = out + "\t" + f.Name + ": " + f.Type + ",\n"
@@ -79,6 +85,24 @@ func (t TypeScript) Struct(name string, fields []bridge.Field) (out string) {
 
 func (t TypeScript) Ptr(to string) string {
 	return to
+}
+
+func (t TypeScript) Interface(name string, methods []string) (out string) {
+	out = "export interface " + name + " {\n"
+	for n := range methods {
+		f := methods[n]
+		out = out + "\t" + f + ",\n"
+	}
+
+	out = out + "}"
+
+	return
+}
+
+func (t TypeScript) Func(name string, args []string, returns string) (out string) {
+	out = name + "(" + strings.Join(args, ", ") + "): " + returns
+
+	return
 }
 
 func (t TypeScript) Int() string   { return "number" }

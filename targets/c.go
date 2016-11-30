@@ -1,7 +1,6 @@
 package targets
 
 import (
-	"io/ioutil"
 	"reflect"
 
 	"regexp"
@@ -21,10 +20,16 @@ type C struct {
 	HashMapType string
 }
 
-func (t C) Format(in interface{}) (string, error) {
-	return bridge.Format(t, in)
+func (t C) Format(in ...interface{}) (string, error) {
+	g := bridge.NewBridge(C{})
+	err := g.FormatMany(in)
+	if err != nil {
+		return "", err
+	}
+	return g.Concat(), nil
 }
 
+/*
 func (t C) FormatTo(in interface{}, path string) error {
 	types, err := t.Format(in)
 	if err != nil {
@@ -32,6 +37,7 @@ func (t C) FormatTo(in interface{}, path string) error {
 	}
 	return ioutil.WriteFile(path, []byte(types), 0700)
 }
+*/
 
 func (t C) Name(input string, tags reflect.StructTag) string {
 	r, _ := regexp.Compile("([A-Z]+[a-z0-9]+)")
